@@ -6,6 +6,52 @@ const router = express.Router();
 // Initialize Redis client
 const client = Redis.createClient();
 
+// Promisify Redis commands (since the async/await methods are not default in the `redis` client)
+client.incrAsync = (key) => {
+    return new Promise((resolve, reject) => {
+        client.incr(key, (err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+        });
+    });
+};
+
+client.expireAsync = (key, seconds) => {
+    return new Promise((resolve, reject) => {
+        client.expire(key, seconds, (err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+        });
+    });
+};
+
+client.lpushAsync = (key, value) => {
+    return new Promise((resolve, reject) => {
+        client.lpush(key, value, (err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+        });
+    });
+};
+
+client.lpopAsync = (key) => {
+    return new Promise((resolve, reject) => {
+        client.lpop(key, (err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+        });
+    });
+};
+
+client.existsAsync = (key) => {
+    return new Promise((resolve, reject) => {
+        client.exists(key, (err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+        });
+    });
+};
+
 // Rate limits
 const SECOND_LIMIT = 1;   // 1 task per second
 const MINUTE_LIMIT = 20;  // 20 tasks per minute
@@ -18,7 +64,7 @@ async function rateLimiter(req, res, next) {
     const userId = req.body.user_id;
     const secondKey = `rate:${userId}:second`;
     const minuteKey = `rate:${userId}:minute`;
-    
+
     try {
         // Increment counters for per-second and per-minute limits
         const secondCount = await client.incrAsync(secondKey);
@@ -85,4 +131,3 @@ router.post('/', rateLimiter, async (req, res) => {
 });
 
 module.exports = router;
-
